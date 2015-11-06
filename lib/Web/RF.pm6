@@ -70,9 +70,9 @@ class Web::RF is export {
         
         my $uri = $request.request-uri.subst(/\?.+$/, '');
 
-        my $resp = $!router.before(:$request);
+        my $resp = $.root.before(:$request);
         unless $resp {
-            my $page = $!router.match($uri);
+            my $page = $.root.match($uri);
             if $page {
                  $resp = $page.target.handle(:$request, :mapping($page.mapping));
             }
@@ -84,13 +84,13 @@ class Web::RF is export {
 
         CATCH {
             when X::BadRequest {
-                return $!router.error(:$request, :exception($_)) || [400, [], []];
+                return $.root.error(:$request, :exception($_)) || [400, [], []];
             }
             when X::NotFound {
-                return $!router.error(:$request, :exception($_)) || [404, [], []];
+                return $.root.error(:$request, :exception($_)) || [404, [], []];
             }
             default {
-                return $!router.error(:$request, :exception($_)) || $_.rethrow;
+                return $.root.error(:$request, :exception($_)) || $_.rethrow;
             }
         }
     }
