@@ -37,19 +37,20 @@ class Web::RF::Router is export {
         }
 
         for $!router.routes {
-            return $_.path if $_.target eqv $controller;
+            return $_.path if $_.target.WHAT eqv $controller.WHAT;
         }
     }
 
-    multi method route(Str $path, Site::Controller $target) {
-        $target.router = self;
-        $!router.add-route($path, target => $target);
+    multi method route(Str $path, Web::RF::Controller $target) {
+        my $t = $target.defined ?? $target !! $target.new;
+        $t.router = self;
+        $!router.add-route($path, target => $t);
     }
-    multi method route(Str $path, Site::Router:D $target) {
+    multi method route(Str $path, Web::RF::Router:D $target) {
         $target.parent = self;
         $!router.include-router($path => $target.router);
     }
-    multi method route(Str $path, Site::Router:U $target) {
+    multi method route(Str $path, Web::RF::Router:U $target) {
         self.route($path, $target.new);
     }
 
