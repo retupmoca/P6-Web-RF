@@ -20,7 +20,7 @@ class Web::RF::Controller is export {
 }
 
 class Web::RF::Router is export {
-    has $!router;
+    has $.router;
     has $.parent is rw;
 
     submethod BUILD {
