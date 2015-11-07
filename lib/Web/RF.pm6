@@ -2,11 +2,29 @@ use v6;
 use Crust::Request;
 use Path::Router;
 
-subset Post of Crust::Request is export where { $_.method eq 'POST' };
-subset Get of Crust::Request is export where { $_.method eq 'GET' };
+class Web::RF::Request is Crust::Request {
+    method user-id {
+        $.session.get('user-id');
+    }
+    method set-user-id($new?) {
+        if $new {
+            $.session.set('user-id', $new);
+            $.session.change-id = True;
+        }
+        else {
+            $.session.remove('user-id');
+        }
+    }
+}
+
+subset Post of Web::RF::Request is export where { $_.method eq 'POST' };
+subset Get of Web::RF::Request is export where { $_.method eq 'GET' };
+subset Authed of Web::RF::Request is export where { so $_.user-id }; 
+subset Anon of Web::RF::Request is export where { !($_.user-id) }; 
 
 class X::BadRequest is Exception is export { }
 class X::NotFound is Exception is export { }
+class X::PermissionDenied is Exception is export { }
 
 class Web::RF::Redirect is export {
     has $.code;
@@ -28,6 +46,16 @@ class Web::RF::Controller is export {
 
     multi method handle {
         die X::BadRequest.new;
+    }
+}
+class Web::RF::Controller::Authed is Web::RF::Controller is export {
+    # we list these for each method so this will always be the most specific
+    # method in the list.
+    multi method handle(Get :$request where Anon) {
+        die X::PermissionDenied.new;
+    }
+    multi method handle(Post :$request where Anon) {
+        die X::PermissionDenied.new;
     }
 }
 
@@ -78,7 +106,7 @@ class Web::RF is export {
     has $.root;
 
     method handle(%env) {
-        my $request = Crust::Request.new(%env);
+        my $request = Web::RF::Request.new(%env);
         
         my $uri = $request.request-uri.subst(/\?.+$/, '');
 
@@ -100,6 +128,9 @@ class Web::RF is export {
             }
             when X::NotFound {
                 return $.root.error(:$request, :exception($_)) || [404, [], []];
+            }
+            when X::PermissionDenied {
+                return $.root.error(:$request, :exception($_)) || [403, [], []];
             }
             default {
                 return $.root.error(:$request, :exception($_)) || $_.rethrow;
