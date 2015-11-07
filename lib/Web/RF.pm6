@@ -8,6 +8,18 @@ subset Get of Crust::Request is export where { $_.method eq 'GET' };
 class X::BadRequest is Exception is export { }
 class X::NotFound is Exception is export { }
 
+class Web::RF::Redirect is export {
+    has $.code;
+    has $.url;
+
+    multi method new($code, $url) { self.new(:$code, :$url) }
+
+    method handle() { [ $.code, [ 'Location' => $.url ], []] }
+
+    multi method go(:$code!, :$url!) { self.new(:$code, :$url).handle(); }
+    multi method go($code, $url) { self.go(:$code, :$url) }
+}
+
 class Web::RF::Controller is export {
     has $.router is rw;
     method url-for($controller) {
