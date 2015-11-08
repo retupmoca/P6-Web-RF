@@ -147,7 +147,7 @@ class Web::RF::Router::Route is Path::Router::Route {
                     @query-ret.push(uri-escape(%params{$q.key})) if %params{$q.key}:exists;
                 }
                 else {
-                    @query-ret.push('q='~uri-escape(%params{$q})) if %params{$q}:exists;
+                    @query-ret.push($q~'='~uri-escape(%params{$q})) if %params{$q}:exists;
                 }
             }
             $url ~= '?' ~ @query-ret.join('&') if @query-ret;
