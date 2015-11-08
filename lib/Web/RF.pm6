@@ -75,7 +75,7 @@ class Web::RF::Router is export {
             if $_.target.WHAT eqv $controller.WHAT {
                 my %used;
                 my $good = True;
-                for $_.required-variable-component-names -> $req {
+                for $_.required-variable-component-names.keys -> $req {
                     my $found = False;
                     for %params.keys -> $param {
                         if $param eq $req {
@@ -91,7 +91,7 @@ class Web::RF::Router is export {
                 }
                 next unless $good;
 
-                for $_.optional-variable-component-names -> $req {
+                for $_.optional-variable-component-names.keys -> $req {
                     my $found = False;
                     for %params.keys -> $param {
                         if $param eq $req {
@@ -127,6 +127,7 @@ class Web::RF::Router is export {
                 return $url;
             }
         }
+        die "No url found!";
     }
 
     multi method route(Str $path, Web::RF::Controller $target) {
@@ -162,7 +163,7 @@ class Web::RF is export {
         unless $resp {
             my $page = $.root.match($uri);
             if $page {
-                if $page ~~ Web::RF::Controller::Authed && $request ~~ Anon {
+                if $page.target ~~ Web::RF::Controller::Authed && $request ~~ Anon {
                     die X::PermissionDenied.new;
                 }
                 $resp = $page.target.handle(:$request, :mapping($page.mapping));
