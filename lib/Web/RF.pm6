@@ -211,6 +211,11 @@ class Web::RF::Router is export {
 class Web::RF is export {
     has Web::RF::Router $.root;
 
+    method app(*%params) {
+        my $webrf = self.new(|%params);
+        return sub (%env) { $webrf.handle(%env); };
+    }
+
     method handle(%env) {
         my $request = Web::RF::Request.new(%env);
         
