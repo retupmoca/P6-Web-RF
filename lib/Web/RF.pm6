@@ -31,8 +31,11 @@ class X::PermissionDenied is Exception is export { }
 
 class Web::RF::Controller is export {
     has Web::RF::Router $.router is rw;
-    method url-for(Web::RF::Controller $controller, *%params) {
+    multi method url-for(Web::RF::Controller $controller, *%params) {
         return $.router.url-for($controller, |%params);
+    }
+    multi method url-for(Str $controller, *%params) {
+        return self.url-for(::($controller), |%params);
     }
 
     multi method handle {
@@ -168,7 +171,7 @@ class Web::RF::Router is export {
     method match(Str $path) {
         $!router.match($path);
     }
-    method url-for(Web::RF::Controller $controller, *%params) {
+    multi method url-for(Web::RF::Controller $controller, *%params) {
         if $.parent {
             return $.parent.url-for($controller, |%params);
         }
@@ -178,6 +181,9 @@ class Web::RF::Router is export {
             return $url if $url.defined;
         }
         die "No url found.";
+    }
+    multi method url-for(Str $controller, *%params) {
+        return self.url-for(::($controller), |%params);
     }
 
     multi method route(Str $path, Web::RF::Controller $target, :$query) {
