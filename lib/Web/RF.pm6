@@ -1,6 +1,7 @@
 use v6;
 use Crust::Request;
 use Path::Router;
+use URI::Escape;
 
 class Web::RF::Router { ... };
 
@@ -62,12 +63,99 @@ class Web::RF::Redirect is Web::RF::Controller is export {
     multi method go($url) { self.go(:code(0), :$url) }
 }
 
+class Web::RF::Router::Route is Path::Router::Route {
+    has @.query;
+    method target-to-url(Web::RF::Controller $controller, *%params) {
+        if self.target.WHAT eqv $controller.WHAT {
+            my %used;
+            my $good = True;
+            for self.required-variable-component-names.keys -> $req {
+                my $found = False;
+                for %params.keys -> $param {
+                    if $param eq $req {
+                        $found = True;
+                        %used{$req} = 1;
+                        last;
+                    }
+                }
+                unless $found {
+                    $good = False;
+                    last;
+                }
+            }
+            unless $good {
+                next;
+            }
+
+            for self.optional-variable-component-names.keys -> $req {
+                my $found = False;
+                for %params.keys -> $param {
+                    if $param eq $req {
+                        $found = True;
+                        %used{$req} = 1;
+                        last;
+                    }
+                }
+            }
+
+            for self.query -> $req is copy {
+                if $req ~~ Bool && $req {
+                    $req = 'query';
+                }
+                my $found = False;
+                for %params.keys -> $param {
+                    if $param eq $req {
+                        $found = True;
+                        %used{$req} = 1;
+                        last;
+                    }
+                }
+            }
+
+            for %params.keys {
+                unless %used{$_} {
+                    $good = False;
+                    last;
+                }
+            }
+            unless $good {
+                next;
+            }
+
+            my $url = '';
+            for self.components -> $comp {
+                if !self.is-component-variable($comp) {
+                    my $name = $comp;
+                    $url ~= '/' ~ $name;
+                }
+                else {
+                    my $name = self.get-component-name($comp);
+                    if %params{$name}:exists {
+                        $url ~= '/' ~ uri-escape(%params{$name});
+                    }
+                }
+            }
+            my @query-ret;
+            for self.query -> $q {
+                if $q ~~ Book && $q {
+                    @query-ret.push(uri-escape(%params<query>)) if %params<query>:exists;
+                }
+                else {
+                    @query-ret.push('q='~uri-escape(%params{$q})) if %params{$q}:exists;
+                }
+            }
+            $url ~= '?' ~ @query-ret.join('&') if @query-ret;
+
+            return $url;
+        }
+    }
+}
 class Web::RF::Router is export {
     has Path::Router    $.router;
     has Web::RF::Router $.parent is rw;
 
     submethod BUILD {
-        $!router = Path::Router.new;
+        $!router = Path::Router.new(:route-class(Web::RF::Router::Route));
         self.routes();
     }
 
@@ -79,76 +167,17 @@ class Web::RF::Router is export {
             return $.parent.url-for($controller, |%params);
         }
 
-        my @failures;
         for $!router.routes {
-            if $_.target.WHAT eqv $controller.WHAT {
-                my %used;
-                my $good = True;
-                for $_.required-variable-component-names.keys -> $req {
-                    my $found = False;
-                    for %params.keys -> $param {
-                        if $param eq $req {
-                            $found = True;
-                            %used{$req} = 1;
-                            last;
-                        }
-                    }
-                    unless $found {
-                        $good = False;
-                        last;
-                    }
-                }
-                unless $good {
-                    @failures.push([ $_.path, 'Missing required var' ]);
-                    next;
-                }
-
-                for $_.optional-variable-component-names.keys -> $req {
-                    my $found = False;
-                    for %params.keys -> $param {
-                        if $param eq $req {
-                            $found = True;
-                            %used{$req} = 1;
-                            last;
-                        }
-                    }
-                }
-
-                for %params.keys {
-                    unless %used{$_} {
-                        $good = False;
-                        last;
-                    }
-                }
-                unless $good {
-                    @failures.push([ $_.path, 'Extra parameters' ]);
-                    next;
-                }
-
-                my $url = '';
-                for $_.components -> $comp {
-                    if !$_.is-component-variable($comp) {
-                        my $name = $comp;
-                        $url ~= '/' ~ $name;
-                    }
-                    else {
-                        my $name = $_.get-component-name($comp);
-                        if %params{$name}:exists {
-                            $url ~= '/' ~ %params{$name};
-                        }
-                    }
-                }
-
-                return $url;
-            }
+            my $url = $_.target-to-url($controller, |%params);
+            return $url if $url.defined;
         }
-        die "No url found. Attempted: " ~ @failures.perl ~ " with " ~ %params.perl;
+        die "No url found.";
     }
 
-    multi method route(Str $path, Web::RF::Controller $target) {
+    multi method route(Str $path, Web::RF::Controller $target, :@query) {
         my $t = $target.defined ?? $target !! $target.new;
         $t.router = self;
-        $!router.add-route($path, target => $t);
+        $!router.add-route($path, target => $t, :query(@query));
     }
     multi method route(Str $path, Web::RF::Router:D $target) {
         $target.parent = self;
@@ -182,7 +211,21 @@ class Web::RF is export {
                     if $page.target ~~ Web::RF::Controller::Authed && $request ~~ Anon {
                         die X::PermissionDenied.new;
                     }
+
                     my %mapping = $page.mapping;
+                    my $params = $request.query-parameters;
+                    for $page.query -> $p {
+                        if $p ~~ Bool && $p {
+                            %mapping<query> = $request.query-string;
+                        }
+                        elsif $p ~~ Str {
+                            %mapping{$p} = $params{$p};
+                        }
+                        else {
+                            die "Unknown query option: "~$p;
+                        }
+                    }
+
                     if $page.target ~~ Web::RF::Controller {
                         $resp = $page.target.handle(:$request, |%mapping);
                     }
