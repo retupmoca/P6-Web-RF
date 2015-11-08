@@ -214,7 +214,7 @@ class Web::RF is export {
 
                     my %mapping = $page.mapping;
                     my $params = $request.query-parameters;
-                    for $page.query -> $p {
+                    for $page.route.query -> $p {
                         if $p ~~ Bool && $p {
                             %mapping<query> = $request.query-string;
                         }
