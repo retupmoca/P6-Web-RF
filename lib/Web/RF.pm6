@@ -30,8 +30,8 @@ class X::PermissionDenied is Exception is export { }
 
 class Web::RF::Controller is export {
     has Web::RF::Router $.router is rw;
-    method url-for(Web::RF::Controller $controller) {
-        return $.router.url-for($controller);
+    method url-for(Web::RF::Controller $controller, *%params) {
+        return $.router.url-for($controller, |%params);
     }
 
     multi method handle {
@@ -68,7 +68,7 @@ class Web::RF::Router is export {
     }
     method url-for(Web::RF::Controller $controller, *%params) {
         if $.parent {
-            return $.parent.url-for($controller);
+            return $.parent.url-for($controller, |%params);
         }
 
         my @failures;
