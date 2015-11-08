@@ -173,7 +173,8 @@ class Web::RF is export {
                 if $page.target ~~ Web::RF::Controller::Authed && $request ~~ Anon {
                     die X::PermissionDenied.new;
                 }
-                $resp = $page.target.handle(:$request, :mapping($page.mapping));
+                my %mapping = $page.mapping;
+                $resp = $page.target.handle(:$request, |%mapping);
             }
             else {
                 die X::NotFound.new;
