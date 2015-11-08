@@ -137,7 +137,7 @@ class Web::RF::Router::Route is Path::Router::Route {
             }
             my @query-ret;
             for self.query -> $q {
-                if $q ~~ Book && $q {
+                if $q ~~ Bool && $q {
                     @query-ret.push(uri-escape(%params<query>)) if %params<query>:exists;
                 }
                 else {
