@@ -2,6 +2,9 @@ use v6;
 use Crust::Request;
 use Path::Router;
 
+class Web::RF::Router { ... };
+class Web::RF::Controller { ... };
+
 class Web::RF::Request is Crust::Request {
     method user-id {
         $.session.get('user-id');
@@ -26,7 +29,7 @@ class X::BadRequest is Exception is export { }
 class X::NotFound is Exception is export { }
 class X::PermissionDenied is Exception is export { }
 
-class Web::RF::Redirect is export {
+class Web::RF::Redirect is Web::RF::Controller is export {
     has Int $.code where { $_ ~~ any(301, 302, 303, 307, 308) };
     has Str $.url where { $_.chars > 0 };
 
@@ -37,8 +40,6 @@ class Web::RF::Redirect is export {
     multi method go(:$code!, :$url!) { self.new(:$code, :$url).handle(); }
     multi method go($code, $url) { self.go(:$code, :$url) }
 }
-
-class Web::RF::Router { ... };
 
 class Web::RF::Controller is export {
     has Web::RF::Router $.router is rw;
