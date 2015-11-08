@@ -102,6 +102,9 @@ class Web::RF::Router::Route is Path::Router::Route {
                 if $req ~~ Bool && $req {
                     $req = 'query';
                 }
+                if $req ~~ Pair {
+                    $req .= key;
+                }
                 my $found = False;
                 for %params.keys -> $param {
                     if $param eq $req {
@@ -139,6 +142,9 @@ class Web::RF::Router::Route is Path::Router::Route {
             for self.query -> $q {
                 if $q ~~ Bool && $q {
                     @query-ret.push(uri-escape(%params<query>)) if %params<query>:exists;
+                }
+                elsif $q ~~ Pair {
+                    @query-ret.push(uri-escape(%params{$q.key})) if %params{$q.key}:exists;
                 }
                 else {
                     @query-ret.push('q='~uri-escape(%params{$q})) if %params{$q}:exists;
@@ -217,6 +223,9 @@ class Web::RF is export {
                     for $page.route.query -> $p {
                         if $p ~~ Bool && $p {
                             %mapping<query> = $request.query-string;
+                        }
+                        elsif $p ~~ Pair {
+                            %mapping{$p.key} = $request.query-string;
                         }
                         elsif $p ~~ Str {
                             %mapping{$p} = $params{$p};
