@@ -180,7 +180,8 @@ class Web::RF::Router is export {
         die "No url found.";
     }
 
-    multi method route(Str $path, Web::RF::Controller $target, :@query) {
+    multi method route(Str $path, Web::RF::Controller $target, :$query) {
+        my @query = $query.list if $query;
         my $t = $target.defined ?? $target !! $target.new;
         $t.router = self;
         $!router.add-route($path, target => $t, :query(@query));
