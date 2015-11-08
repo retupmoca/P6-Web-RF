@@ -1,5 +1,7 @@
 # Web::RF #
 
+See https://github.com/retupmoca/egeler.us for a more comprehensive example.
+
 Web::RF is a simple routing web framework designed to work with Crust. It attempts
 to decouple your controller code from the URL's used to access them.
 
