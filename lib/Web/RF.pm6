@@ -6,6 +6,9 @@ use URI::Escape;
 class Web::RF::Router { ... };
 
 class Web::RF::Request is Crust::Request {
+    method host {
+        $.env<HTTP_HOST> // $.env<SERVER_NAME> //  $.env<HOSTNAME> // 'localhost';
+    } 
     method user-id {
         $.session.get('user-id');
     }
