@@ -27,8 +27,8 @@ class X::NotFound is Exception is export { }
 class X::PermissionDenied is Exception is export { }
 
 class Web::RF::Redirect is export {
-    has $.code;
-    has $.url;
+    has Int $.code where { $_ ~~ any(301, 302, 303, 307, 308) };
+    has Str $.url where { $_.chars > 0 };
 
     multi method new($code, $url) { self.new(:$code, :$url) }
 
@@ -38,9 +38,11 @@ class Web::RF::Redirect is export {
     multi method go($code, $url) { self.go(:$code, :$url) }
 }
 
+class Web::RF::Router;
+
 class Web::RF::Controller is export {
-    has $.router is rw;
-    method url-for($controller) {
+    has Web::RF::Router $.router is rw;
+    method url-for(Web::RF::Controller $controller) {
         return $.router.url-for($controller);
     }
 
@@ -60,18 +62,18 @@ class Web::RF::Controller::Authed is Web::RF::Controller is export {
 }
 
 class Web::RF::Router is export {
-    has $.router;
-    has $.parent is rw;
+    has Path::Router    $.router;
+    has Web::RF::Router $.parent is rw;
 
     submethod BUILD {
         $!router = Path::Router.new;
         self.routes();
     }
 
-    method match($path) {
+    method match(Str $path) {
         $!router.match($path);
     }
-    method url-for($controller) {
+    method url-for(Web::RF::Controller $controller) {
         if $.parent {
             return $.parent.url-for($controller);
         }
@@ -103,7 +105,7 @@ class Web::RF::Router is export {
 }
 
 class Web::RF is export {
-    has $.root;
+    has Web::RF::Router $.root;
 
     method handle(%env) {
         my $request = Web::RF::Request.new(%env);
