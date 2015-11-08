@@ -71,6 +71,7 @@ class Web::RF::Router is export {
             return $.parent.url-for($controller);
         }
 
+        my @failures;
         for $!router.routes {
             if $_.target.WHAT eqv $controller.WHAT {
                 my %used;
@@ -89,7 +90,10 @@ class Web::RF::Router is export {
                         last;
                     }
                 }
-                next unless $good;
+                unless $good {
+                    @failures.push([ $_.path, 'Missing required var' ]);
+                    next;
+                }
 
                 for $_.optional-variable-component-names.keys -> $req {
                     my $found = False;
@@ -108,7 +112,10 @@ class Web::RF::Router is export {
                         last;
                     }
                 }
-                next unless $good;
+                unless $good {
+                    @failures.push([ $_.path, 'Extra parameters' ]);
+                    next;
+                }
 
                 my $url = '';
                 for $_.components -> $comp {
@@ -127,7 +134,7 @@ class Web::RF::Router is export {
                 return $url;
             }
         }
-        die "No url found!";
+        die "No url found. Attempted: " ~ @failures.perl ~ " with " ~ %params.perl;
     }
 
     multi method route(Str $path, Web::RF::Controller $target) {
