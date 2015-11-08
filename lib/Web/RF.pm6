@@ -213,6 +213,7 @@ class Web::RF::Router is export {
 
 class Web::RF is export {
     has Web::RF::Router $.root;
+    has $.request-class = Web::RF::Request;
 
     method app(*%params) {
         my $webrf = self.new(|%params);
@@ -220,7 +221,7 @@ class Web::RF is export {
     }
 
     method handle(%env) {
-        my $request = Web::RF::Request.new(%env);
+        my $request = $.request-class.new(%env);
         
         my $uri = $request.request-uri.subst(/\?.+$/, '');
 
