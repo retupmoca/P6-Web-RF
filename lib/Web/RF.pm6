@@ -39,14 +39,7 @@ class Web::RF::Controller is export {
     }
 }
 class Web::RF::Controller::Authed is Web::RF::Controller is export {
-    # we list these for each method so this will always be the most specific
-    # method in the list.
-    multi method handle(Get :$request where Anon) {
-        die X::PermissionDenied.new;
-    }
-    multi method handle(Post :$request where Anon) {
-        die X::PermissionDenied.new;
-    }
+    # we do nothing here; the handler code in Web::RF will do the dirty work
 }
 
 class Web::RF::Redirect is Web::RF::Controller is export {
@@ -169,7 +162,10 @@ class Web::RF is export {
         unless $resp {
             my $page = $.root.match($uri);
             if $page {
-                 $resp = $page.target.handle(:$request, :mapping($page.mapping));
+                if $page ~~ Web::RF::Controller::Authed && $request ~~ Anon {
+                    die X::PermissionDenied.new;
+                }
+                $resp = $page.target.handle(:$request, :mapping($page.mapping));
             }
             else {
                 die X::NotFound.new;
