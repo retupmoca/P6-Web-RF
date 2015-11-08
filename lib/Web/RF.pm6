@@ -73,13 +73,63 @@ class Web::RF::Router is export {
     method match(Str $path) {
         $!router.match($path);
     }
-    method url-for(Web::RF::Controller $controller) {
+    method url-for(Web::RF::Controller $controller, *%params) {
         if $.parent {
             return $.parent.url-for($controller);
         }
 
         for $!router.routes {
-            return $_.path if $_.target.WHAT eqv $controller.WHAT;
+            if $_.target.WHAT eqv $controller.WHAT {
+                my %used;
+                my $good = True;
+                for $_.required-variable-component-names -> $req {
+                    my $found = False;
+                    for %params.keys -> $param {
+                        if $param eq $req {
+                            $found = True;
+                            %used{$req} = 1;
+                            last;
+                        }
+                    }
+                    unless $found {
+                        $good = False;
+                        last;
+                    }
+                }
+                next unless $good;
+
+                for $_.optional-variable-component-names -> $req {
+                    my $found = False;
+                    for %params.keys -> $param {
+                        if $param eq $req {
+                            $found = True;
+                            %used{$req} = 1;
+                            last;
+                        }
+                    }
+                }
+
+                for %params.keys {
+                    unless %used{$_} {
+                        $good = False;
+                        last;
+                    }
+                }
+                next unless $good;
+
+                my $url = '';
+                for $_.components -> $comp {
+                    my $name = $_.get-component-name($comp);
+                    if $_.is-component-variable($comp) {
+                        $url ~= '/' ~ $name;
+                    }
+                    elsif %params{$name}:exists {
+                        $url ~= '/' ~ %params{$name};
+                    }
+                }
+
+                return $url;
+            }
         }
     }
 
