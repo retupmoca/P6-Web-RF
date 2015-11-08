@@ -123,9 +123,11 @@ class Web::RF::Router is export {
                         my $name = $comp;
                         $url ~= '/' ~ $name;
                     }
-                    elsif %params{$name}:exists {
+                    else {
                         my $name = $_.get-component-name($comp);
-                        $url ~= '/' ~ %params{$name};
+                        if %params{$name}:exists {
+                            $url ~= '/' ~ %params{$name};
+                        }
                     }
                 }
 
