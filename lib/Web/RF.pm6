@@ -38,7 +38,7 @@ class Web::RF::Redirect is export {
     multi method go($code, $url) { self.go(:$code, :$url) }
 }
 
-class Web::RF::Router;
+class Web::RF::Router { ... };
 
 class Web::RF::Controller is export {
     has Web::RF::Router $.router is rw;
