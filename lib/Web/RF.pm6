@@ -11,7 +11,7 @@ class Web::RF::Request is Crust::Request {
     method set-user-id($new?) {
         if $new {
             $.session.set('user-id', $new);
-            $.session.change-id = True;
+            #$.session.change-id = True;
         }
         else {
             $.session.remove('user-id');
@@ -119,11 +119,12 @@ class Web::RF::Router is export {
 
                 my $url = '';
                 for $_.components -> $comp {
-                    my $name = $_.get-component-name($comp);
-                    if $_.is-component-variable($comp) {
+                    if !$_.is-component-variable($comp) {
+                        my $name = $comp;
                         $url ~= '/' ~ $name;
                     }
                     elsif %params{$name}:exists {
+                        my $name = $_.get-component-name($comp);
                         $url ~= '/' ~ %params{$name};
                     }
                 }
