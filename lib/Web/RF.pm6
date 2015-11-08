@@ -43,15 +43,23 @@ class Web::RF::Controller::Authed is Web::RF::Controller is export {
 }
 
 class Web::RF::Redirect is Web::RF::Controller is export {
-    has Int $.code where { $_ ~~ any(301, 302, 303, 307, 308) };
+    has Int $.code where { !$_.defined || $_ ~~ any(0, 301, 302, 303, 307, 308) };
     has Str $.url where { $_.chars > 0 };
 
     multi method new($code, $url) { self.new(:$code, :$url) }
+    multi method new($url) { self.new(:code(0), :$url) }
 
-    method handle() { [ $.code, [ 'Location' => $.url ], []] }
+    method handle() {
+        $.code ?? 
+          [ $.code, [ 'Location' => $.url ], []]
+        !!
+          $.url
+        ;
+    }
 
-    multi method go(:$code!, :$url!) { self.new(:$code, :$url).handle(); }
+    multi method go(:$code, :$url!) { self.new(:$code, :$url).handle(); }
     multi method go($code, $url) { self.go(:$code, :$url) }
+    multi method go($url) { self.go(:code(0), :$url) }
 }
 
 class Web::RF::Router is export {
@@ -166,21 +174,33 @@ class Web::RF is export {
         
         my $uri = $request.request-uri.subst(/\?.+$/, '');
 
-        my $resp = $.root.before(:$request);
-        unless $resp {
-            my $page = $.root.match($uri);
-            if $page {
-                if $page.target ~~ Web::RF::Controller::Authed && $request ~~ Anon {
-                    die X::PermissionDenied.new;
+        loop {
+            my $resp = $.root.before(:$request);
+            unless $resp {
+                my $page = $.root.match($uri);
+                if $page {
+                    if $page.target ~~ Web::RF::Controller::Authed && $request ~~ Anon {
+                        die X::PermissionDenied.new;
+                    }
+                    my %mapping = $page.mapping;
+                    if $page.target ~~ Web::RF::Controller {
+                        $resp = $page.target.handle(:$request, |%mapping);
+                    }
+                    elsif $page.target ~~ Callable {
+                        $resp = $page.target.(:$request, |%mapping);
+                    }
+                    else {
+                        die "No valid target found.";
+                    }
                 }
-                my %mapping = $page.mapping;
-                $resp = $page.target.handle(:$request, |%mapping);
+                else {
+                    die X::NotFound.new;
+                }
             }
-            else {
-                die X::NotFound.new;
-            }
+            # allow internal redirects
+            return $resp unless $resp ~~ Str;
+            $uri = $resp;
         }
-        return $resp;
 
         CATCH {
             when X::BadRequest {
